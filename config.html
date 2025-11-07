@@ -4,7 +4,6 @@
   <meta charset="utf-8">
   <title>Twitch Video Component - Config</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://extension-files.twitch.tv/extension-files/com.example.videocomponent-0.0.1/config.js"></script>
   <style>
     body {font-family: Arial, sans-serif; background:#18181b; color:#efeff1; padding:20px;}
     input {width:100%; padding:10px; margin:10px 0; background:#1f1f23; border:1px solid #9146ff; color:#fff;}
@@ -28,6 +27,7 @@
     const addBtn = document.getElementById('add');
     const saveBtn = document.getElementById('save');
     let friends = [];
+    let authToken = null;
 
     function render() {
       listEl.innerHTML = '';
@@ -49,11 +49,10 @@
 
     addBtn.onclick = async () => {
       const login = document.getElementById('username').value.trim().toLowerCase();
-      if (!login) return;
+      if (!login || !authToken) return;
       try {
-        const token = await Twitch.ext.getToken();
         const res = await fetch(`https://api.twitch.tv/helix/users?login=${login}`, {
-          headers: { 'Client-ID': clientId, 'Authorization': `Bearer ${token}` }
+          headers: { 'Client-ID': clientId, 'Authorization': `Bearer ${authToken}` }
         });
         const data = await res.json();
         if (data.data && data.data[0]) {
@@ -73,17 +72,33 @@
     };
 
     saveBtn.onclick = () => {
-      Twitch.ext.configuration.broadcaster = JSON.stringify({ friends });
+      Twitch.ext.configuration.set('broadcaster', '1.0', JSON.stringify({ friends }));
       alert('Saved!');
     };
 
-    if (Twitch.ext.configuration.broadcaster) {
-      try {
-        const cfg = JSON.parse(Twitch.ext.configuration.broadcaster);
-        if (cfg.friends) friends = cfg.friends;
-      } catch (e) {}
-      render();
-    }
+    Twitch.ext.configuration.onChanged(() => {
+      if (Twitch.ext.configuration.broadcaster) {
+        try {
+          const cfg = JSON.parse(Twitch.ext.configuration.broadcaster.content);
+          if (cfg.friends) friends = cfg.friends;
+          render();
+        } catch (e) { console.error(e); }
+      }
+    });
+
+    Twitch.ext.onAuthorized((auth) => {
+      authToken = auth.token;
+      // Initial load
+      if (Twitch.ext.configuration.broadcaster) {
+        try {
+          const cfg = JSON.parse(Twitch.ext.configuration.broadcaster.content);
+          if (cfg.friends) friends = cfg.friends;
+          render();
+        } catch (e) { console.error(e); }
+      }
+    });
+
+    Twitch.ext.onError((e) => console.error(e));
   </script>
 </body>
 </html>
