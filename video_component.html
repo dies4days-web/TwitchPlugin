@@ -13,43 +13,50 @@
       width: 380px;
       height: 55px;
       z-index: 2147483647;
-      transition: left 0.4s ease;
+      transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       display: flex;
       box-sizing: border-box;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     }
     #twitch-friends-container.open { left: 0; }
 
     #twitch-friends-bar {
       width: 340px;
-      background: rgba(15, 15, 20, 0.95);
-      border-right: 3px solid #9146ff;
-      backdrop-filter: blur(10px);
-      padding: 5px;
+      background: linear-gradient(135deg, rgba(24, 24, 27, 0.95), rgba(15, 15, 20, 0.95));
+      border-right: 2px solid #9146ff;
+      backdrop-filter: blur(15px);
+      padding: 5px 10px;
       box-sizing: border-box;
       overflow-x: auto;
       white-space: nowrap;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
+      border-radius: 0 0 8px 0;
     }
 
     #twitch-friends-tab {
       width: 40px;
-      background: #9146ff;
+      background: linear-gradient(90deg, #9146ff, #7c3aed);
       border-radius: 0 12px 12px 0;
-      box-shadow: 0 0 20px #9146ff, 0 0 40px #9146ff;
+      box-shadow: 0 0 15px #9146ff, 0 0 30px rgba(145, 70, 255, 0.6);
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: white;
+      color: #ffffff;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
       font-weight: bold;
       font-size: 12px;
       writing-mode: vertical-rl;
       text-orientation: mixed;
       user-select: none;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
-    #twitch-friends-tab:hover { transform: scale(1.05); }
+    #twitch-friends-tab:hover {
+      transform: translateX(4px) scale(1.05);
+      box-shadow: 0 0 25px #9146ff, 0 0 50px rgba(145, 70, 255, 0.8);
+    }
 
     .friend {
       display: inline-flex;
@@ -57,24 +64,36 @@
       align-items: center;
       text-align: center;
       min-width: 70px;
+      padding: 4px;
+      border-radius: 8px;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+    .friend:hover {
+      background: rgba(145, 70, 255, 0.1);
+      transform: translateY(-2px);
     }
     .friend img {
       width: 40px;
       height: 40px;
       border-radius: 50%;
-      border: 2px solid #222;
+      border: 2px solid rgba(145, 70, 255, 0.4);
+      transition: border-color 0.2s ease;
+    }
+    .friend:hover img {
+      border-color: #9146ff;
     }
     .friend .name {
-      color: #fff;
+      color: #efeff1;
       margin: 2px 0;
       font-size: 12px;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
       max-width: 70px;
       overflow: hidden;
       text-overflow: ellipsis;
     }
     .friend button {
       background: transparent;
-      color: #fff;
+      color: #aaa;
       border: none;
       padding: 2px 6px;
       border-radius: 4px;
@@ -83,14 +102,16 @@
       display: flex;
       align-items: center;
       gap: 4px;
+      transition: color 0.2s ease;
     }
     .friend button.follow { color: #aaa; }
     .friend button.follow:hover { color: #fff; }
-    .friend button.following { color: #f00; }
-    .friend button.following:hover { color: #d00; }
+    .friend button.following { color: #ff4d4d; }
+    .friend button.following:hover { color: #ff1a1a; }
     .no-friends {
       color: #aaa;
       font-size: 14px;
+      font-style: italic;
       margin-left: 15px;
     }
   </style>
