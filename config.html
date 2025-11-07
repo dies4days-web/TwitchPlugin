@@ -5,53 +5,37 @@
   <title>Friends List Config</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body {font-family: Arial, sans-serif; background:#18181b; color:#efeff1; padding:20px; margin:0;}
-    h1 {margin-bottom:20px;}
-    input {width:100%; padding:12px; margin:10px 0; background:#1f1f23; border:2px solid #9146ff; border-radius:8px; color:#fff; font-size:16px;}
-    button {background:#9146ff; color:#fff; border:none; padding:14px 24px; cursor:pointer; margin:10px 5px; border-radius:8px; font-size:16px; font-weight:bold;}
+    body {font-family: Arial, sans-serif; background:#18181b; color:#efeff1; padding:20px;}
+    input {width:100%; padding:10px; margin:10px 0; background:#1f1f23; border:1px solid #9146ff; color:#fff;}
+    button {background:#9146ff; color:#fff; border:none; padding:10px 20px; cursor:pointer; margin:5px;}
     button:hover {background:#7c3aed;}
-    .friend {display:flex; align-items:center; background:#1f1f23; padding:12px; margin:10px 0; border-radius:12px; gap:12px;}
-    .friend img {width:64px; height:64px; border-radius:50%; border:3px solid #9146ff;}
-    .friend span {flex:1; font-size:18px;}
-    .warning {background:#330000; color:#ff6b6b; padding:20px; border-radius:12px; margin:20px 0; text-align:center; font-size:18px; border:2px solid #ff4d4d;}
-    .big-button {background:#ff2d55; padding:20px 40px; font-size:22px; font-weight:bold; border-radius:16px;}
+    .friend {display:flex; align-items:center; background:#1f1f23; padding:10px; margin:10px 0;}
+    .friend img {border-radius:50%; width:48px; height:48px; margin-right:10px;}
+    .friend span {flex:1;}
+    .warning {color:#ff6b6b; padding:10px; border:1px solid #ff4d4d; border-radius:4px; margin:10px 0;}
   </style>
 </head>
 <body>
   <h1>Friends List Config</h1>
-
-  <div id="twitch-mode">
-    <input type="text" id="username" placeholder="Enter Twitch username (e.g. ninja)" />
-    <button id="add">Add Friend</button>
-    <div id="list"></div>
-    <button id="save">Save & Close</button>
-  </div>
-
-  <div id="direct-mode" style="display:none;">
-    <div class="warning">
-      <strong>You're outside Twitch — using fallback mode</strong><br><br>
-      <button class="big-button" id="test-btn">ADD 5 POPULAR STREAMERS NOW</button>
-      <p>Then click Save & Close → Go live → Friends bar appears!</p>
-    </div>
-  </div>
+  <div id="warning" style="display:none;" class="warning">Running in fallback mode (no Twitch context) - limited functionality</div>
+  <input type="text" id="username" placeholder="Twitch username (exact login name)" />
+  <button id="add">Add Friend</button>
+  <div id="list"></div>
+  <button id="save">Save & Close</button>
 
   <script>
-    // GLOBAL variables
-    let friends = [];
-    const listEl = document.getElementById('list');
     const clientId = 'v52hn2spd1ldo2zo34iv91xtkoo98s';
+    const listEl = document.getElementById('list');
+    const addBtn = document.getElementById('add');
+    const saveBtn = document.getElementById('save');
+    const warningEl = document.getElementById('warning');
+    let friends = [];
+    let helixToken = null;
+    let isTwitchContext = typeof Twitch !== 'undefined' && Twitch.ext;
 
-    // OFFICIAL Twitch fallback image (never 403s)
-    const fallbackImg = 'https://static-cdn.jtvnw.net/ttv-static/404_preview-64x64.png';
-
-    // Hardcoded popular streamers (updated 2025)
-    const popular = [
-      { login: "pokimane", id: "491450517", name: "Pokimane" },
-      { login: "shroud", id: "37402112", name: "shroud" },
-      { login: "ninja", id: "19571641", name: "Ninja" },
-      { login: "xqc", id: "71092938", name: "xQc" },
-      { login: "ludwig", id: "24916974", name: "Ludwig" }
-    ];
+    if (!isTwitchContext) {
+      warningEl.style.display = 'block';
+    }
 
     function render() {
       listEl.innerHTML = '';
@@ -59,89 +43,95 @@
         const div = document.createElement('div');
         div.className = 'friend';
         div.innerHTML = `
-          <img src="${f.img}" onerror="this.src='${fallbackImg}'" alt="${f.name}">
-          <span>${f.name} (@${f.login})</span>
-          <button onclick="friends.splice(${i},1); render();" style="background:#6441a5; padding:10px;">Remove</button>
+          <img src="${f.profile_image_url || 'https://static-cdn.jtvnw.net/ttv-static/404_preview-48x48.png'}" alt="${f.display_name}">
+          <span>${f.display_name} (${f.login})</span>
+          <button data-index="${i}" style="background:#6441a5;">Remove</button>
         `;
+        div.querySelector('button').onclick = () => {
+          friends.splice(i, 1);
+          render();
+        };
         listEl.appendChild(div);
       });
     }
 
-    function save() {
-      const data = JSON.stringify({ friends: friends.map(f => ({id:f.id, login:f.login, display_name:f.name, profile_image_url:f.img})) });
-      localStorage.setItem('friends-backup', data);
-      if (window.Twitch && Twitch.ext) {
-        Twitch.ext.configuration.set('broadcaster', '1.0', data);
-      }
-      alert('SAVED! Go live now — your friends bar will appear!');
-    }
-
-    // Button in direct mode
-    document.getElementById('test-btn').onclick = async () => {
-      for (const p of popular) {
-        const url = `https://api.twitch.tv/helix/users?login=${p.login}`;
-        try {
-          const res = await fetch(url, {
-            headers: { 'Client-ID': clientId, 'Authorization': 'Bearer ' }
-          });
-          const json = await res.json();
-          const user = json.data[0];
-          const img = user?.profile_image_url || fallbackImg;
-          friends.push({ id: p.id, login: p.login, name: p.name, img });
-        } catch(e) {
-          friends.push({ id: p.id, login: p.login, name: p.name, img: fallbackImg });
-        }
-      }
-      render();
-      alert('5 streamers added! Click Save & Close → Go live!');
-    };
-
-    // Normal add button
-    document.getElementById('add').onclick = async () => {
+    addBtn.onclick = async () => {
       const login = document.getElementById('username').value.trim().toLowerCase();
       if (!login) return;
-      const url = `https://api.twitch.tv/helix/users?login=${login}`;
+      if (!isTwitchContext || !helixToken) {
+        alert('No Twitch context - adding dummy user');
+        friends.push({
+          id: Date.now().toString(),
+          login: login,
+          display_name: login.charAt(0).toUpperCase() + login.slice(1),
+          profile_image_url: 'https://static-cdn.jtvnw.net/ttv-static/404_preview-300x300.png'
+        });
+        render();
+        document.getElementById('username').value = '';
+        return;
+      }
       try {
-        const res = await fetch(url, { headers: { 'Client-ID': clientId } });
-        const json = await res.json();
-        if (json.data && json.data[0]) {
-          const u = json.data[0];
-          if (!friends.find(f => f.id === u.id)) {
-            friends.push({ id: u.id, login: u.login, name: u.display_name, img: u.profile_image_url || fallbackImg });
+        const res = await fetch(`https://api.twitch.tv/helix/users?login=${login}`, {
+          headers: { 'Client-ID': clientId, 'Authorization': `Bearer ${helixToken}` }
+        });
+        if (res.status === 401) {
+          alert('Unauthorized - check token');
+          return;
+        }
+        const data = await res.json();
+        if (data.data && data.data[0]) {
+          const user = data.data[0];
+          if (!friends.find(f => f.id === user.id)) {
+            friends.push({
+              id: user.id,
+              login: user.login,
+              display_name: user.display_name,
+              profile_image_url: user.profile_image_url
+            });
             render();
           }
+        } else {
+          alert('User not found');
         }
-      } catch(e) { alert('User not found or API error'); }
+      } catch (e) { alert('Error: ' + e.message); }
       document.getElementById('username').value = '';
     };
 
-    document.getElementById('save').onclick = save;
+    saveBtn.onclick = () => {
+      if (!isTwitchContext) {
+        localStorage.setItem('twitch-friends-backup', JSON.stringify({ friends }));
+        alert('Saved to local storage (fallback) - will work for testing');
+        return;
+      }
+      Twitch.ext.configuration.set('broadcaster', '1.0', JSON.stringify({ friends }));
+      alert('Saved!');
+    };
 
-    // Detect mode
-    if (typeof Twitch === 'undefined' || !Twitch.ext) {
-      document.getElementById('twitch-mode').style.display = 'none';
-      document.getElementById('direct-mode').style.display = 'block';
-    } else {
-      Twitch.ext.onAuthorized(auth => {});
+    if (isTwitchContext) {
       Twitch.ext.configuration.onChanged(() => {
         if (Twitch.ext.configuration.broadcaster) {
           try {
             const cfg = JSON.parse(Twitch.ext.configuration.broadcaster.content);
-            friends = cfg.friends.map(f => ({id:f.id, login:f.login, name:f.display_name, img:f.profile_image_url}));
+            if (cfg.friends) friends = cfg.friends;
             render();
-          } catch(e) {}
+          } catch (e) { alert('Config parse error'); }
         }
       });
-    }
 
-    // Load backup
-    const backup = localStorage.getItem('friends-backup');
-    if (backup) {
-      try {
-        const cfg = JSON.parse(backup);
-        friends = cfg.friends.map(f => ({id:f.id, login:f.login, name:f.display_name || f.login, img:f.profile_image_url || fallbackImg}));
-        render();
-      } catch(e) {}
+      Twitch.ext.onAuthorized((auth) => {
+        helixToken = auth.helixToken;
+      });
+
+      Twitch.ext.onError((e) => alert('Twitch error: ' + e));
+    } else {
+      const saved = localStorage.getItem('twitch-friends-backup');
+      if (saved) {
+        try {
+          const cfg = JSON.parse(saved);
+          if (cfg.friends) friends = cfg.friends;
+          render();
+        } catch (e) {}
+      }
     }
   </script>
 </body>
