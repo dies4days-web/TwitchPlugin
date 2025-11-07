@@ -27,7 +27,7 @@
     const addBtn = document.getElementById('add');
     const saveBtn = document.getElementById('save');
     let friends = [];
-    let authToken = null;
+    let helixToken = null;
 
     function render() {
       listEl.innerHTML = '';
@@ -49,10 +49,10 @@
 
     addBtn.onclick = async () => {
       const login = document.getElementById('username').value.trim().toLowerCase();
-      if (!login || !authToken) return;
+      if (!login || !helixToken) return;
       try {
         const res = await fetch(`https://api.twitch.tv/helix/users?login=${login}`, {
-          headers: { 'Client-ID': clientId, 'Authorization': `Bearer ${authToken}` }
+          headers: { 'Client-ID': clientId, 'Authorization': `Bearer ${helixToken}` }
         });
         const data = await res.json();
         if (data.data && data.data[0]) {
@@ -67,38 +67,41 @@
             render();
           }
         }
-      } catch (e) { console.error(e); }
+      } catch (e) { console.error('Add friend error:', e); }
       document.getElementById('username').value = '';
     };
 
     saveBtn.onclick = () => {
       Twitch.ext.configuration.set('broadcaster', '1.0', JSON.stringify({ friends }));
+      console.log('Config saved');
       alert('Saved!');
     };
 
     Twitch.ext.configuration.onChanged(() => {
+      console.log('Config changed detected');
       if (Twitch.ext.configuration.broadcaster) {
         try {
           const cfg = JSON.parse(Twitch.ext.configuration.broadcaster.content);
           if (cfg.friends) friends = cfg.friends;
           render();
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error('Parse error:', e); }
       }
     });
 
     Twitch.ext.onAuthorized((auth) => {
-      authToken = auth.token;
+      helixToken = auth.helixToken;
+      console.log('Authorized with token');
       // Initial load
       if (Twitch.ext.configuration.broadcaster) {
         try {
           const cfg = JSON.parse(Twitch.ext.configuration.broadcaster.content);
           if (cfg.friends) friends = cfg.friends;
           render();
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error('Initial parse error:', e); }
       }
     });
 
-    Twitch.ext.onError((e) => console.error(e));
+    Twitch.ext.onError((e) => console.error('Twitch error:', e));
   </script>
 </body>
 </html>
