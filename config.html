@@ -1,15 +1,89 @@
-<!DOCTYPE html><html><head><meta charset="utf-8"><title>Config</title><style>body{font-family:sans-serif;padding:20px;background:#f0f0f0}</style></head><body>
-<h2>Add Friends (lowercase, no @)</h2>
-<input id="i" placeholder="pokimane" style="width:200px;padding:8px"><button onclick="add()">Add</button>
-<ul id="l" style="margin:20px 0"></ul>
-<button onclick="save()" style="padding:10px 20px;background:#9147ff;color:white;border:none">SAVE LIST</button>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Twitch Video Component - Config</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://extension-files.twitch.tv/extension-files/com.example.videocomponent-0.0.1/config.js"></script>
+  <style>
+    body {font-family: Arial, sans-serif; background:#18181b; color:#efeff1; padding:20px;}
+    input {width:100%; padding:10px; margin:10px 0; background:#1f1f23; border:1px solid #9146ff; color:#fff;}
+    button {background:#9146ff; color:#fff; border:none; padding:10px 20px; cursor:pointer; margin:5px;}
+    button:hover {background:#7c3aed;}
+    .friend {display:flex; align-items:center; background:#1f1f23; padding:10px; margin:10px 0;}
+    .friend img {border-radius:50%; width:48px; height:48px; margin-right:10px;}
+    .friend span {flex:1;}
+  </style>
+</head>
+<body>
+  <h1>Friends List Config</h1>
+  <input type="text" id="username" placeholder="Twitch username (exact login name)" />
+  <button id="add">Add Friend</button>
+  <div id="list"></div>
+  <button id="save">Save & Close</button>
 
-<script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
-<script>
-let list=[];
-window.Twitch.ext.onAuthorized(()=>{if(window.Twitch.ext.configuration.broadcaster)list=JSON.parse(window.Twitch.ext.configuration.broadcaster.content||'[]');render();});
-function render(){document.getElementById('l').innerHTML='';list.forEach((x,i)=>{let li=document.createElement('li');li.textContent=x+' ';let b=document.createElement('button');b.textContent='remove';b.onclick=()=>{list.splice(i,1);render();};li.appendChild(b);document.getElementById('l').appendChild(li);});}
-function add(){let v=document.getElementById('i').value.trim();if(v&&!list.includes(v)){list.push(v);render();document.getElementById('i').value='';}}
-function save(){window.Twitch.ext.configuration.set('broadcaster','1',JSON.stringify(list));alert('Saved – go live to see it');}
-</script>
-</body></html>
+  <script>
+    const clientId = 'YOUR_CLIENT_ID'; // ← REPLACE WITH YOUR EXTENSION CLIENT ID
+    const listEl = document.getElementById('list');
+    const addBtn = document.getElementById('add');
+    const saveBtn = document.getElementById('save');
+    let friends = [];
+
+    function render() {
+      listEl.innerHTML = '';
+      friends.forEach((f, i) => {
+        const div = document.createElement('div');
+        div.className = 'friend';
+        div.innerHTML = `
+          <img src="${f.profile_image_url}" alt="${f.display_name}">
+          <span>${f.display_name} (${f.login})</span>
+          <button data-index="${i}" style="background:#6441a5;">Remove</button>
+        `;
+        div.querySelector('button').onclick = () => {
+          friends.splice(i, 1);
+          render();
+        };
+        listEl.appendChild(div);
+      });
+    }
+
+    addBtn.onclick = async () => {
+      const login = document.getElementById('username').value.trim().toLowerCase();
+      if (!login) return;
+      try {
+        const token = await Twitch.ext.getToken();
+        const res = await fetch(`https://api.twitch.tv/helix/users?login=${login}`, {
+          headers: { 'Client-ID': clientId, 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.data && data.data[0]) {
+          const user = data.data[0];
+          if (!friends.find(f => f.id === user.id)) {
+            friends.push({
+              id: user.id,
+              login: user.login,
+              display_name: user.display_name,
+              profile_image_url: user.profile_image_url
+            });
+            render();
+          }
+        }
+      } catch (e) { console.error(e); }
+      document.getElementById('username').value = '';
+    };
+
+    saveBtn.onclick = () => {
+      Twitch.ext.configuration.broadcaster = JSON.stringify({ friends });
+      alert('Saved!');
+    };
+
+    if (Twitch.ext.configuration.broadcaster) {
+      try {
+        const cfg = JSON.parse(Twitch.ext.configuration.broadcaster);
+        if (cfg.friends) friends = cfg.friends;
+      } catch (e) {}
+      render();
+    }
+  </script>
+</body>
+</html>
