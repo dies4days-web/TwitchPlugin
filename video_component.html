@@ -130,47 +130,48 @@
     let followed = new Set();
     let userId = null;
     let helixToken = null;
-
-    console.log('Viewer script loaded');
+    let isTwitchContext = typeof Twitch !== 'undefined' && Twitch.ext;
 
     tab.onclick = () => {
       container.classList.toggle('open');
     };
 
     async function loadFriends() {
-      console.log('Loading friends. Broadcaster config:', Twitch.ext.configuration.broadcaster);
-      if (Twitch.ext.configuration.broadcaster) {
+      if (isTwitchContext && Twitch.ext.configuration.broadcaster) {
         try {
           const cfg = JSON.parse(Twitch.ext.configuration.broadcaster.content);
           friends = cfg.friends || [];
           render();
-        } catch (e) { console.error('Load friends error:', e); }
+        } catch (e) { console.error(e); }
+      } else {
+        const saved = localStorage.getItem('twitch-friends-backup');
+        if (saved) {
+          try {
+            const cfg = JSON.parse(saved);
+            friends = cfg.friends || [];
+            render();
+          } catch (e) {}
+        }
       }
     }
 
     async function checkFollows() {
-      if (!helixToken || !userId) {
-        console.log('No helixToken or userId for follows check');
-        return;
-      }
+      if (!isTwitchContext || !helixToken || !userId) return;
       try {
         let url = `https://api.twitch.tv/helix/channels/followed?user_id=${userId}`;
-        friends.forEach(f => { url += `&broadcaster_id=${f.id}`; });
-        console.log('Fetching follows:', url);
+        friends.forEach(f => url += `&broadcaster_id=${f.id}`);
         const res = await fetch(url, {
           headers: { 'Client-ID': clientId, 'Authorization': `Bearer ${helixToken}` }
         });
         if (res.ok) {
           const data = await res.json();
           followed = new Set(data.data.map(f => f.broadcaster_id));
-        } else {
-          console.error('Follows API error:', res.status);
+          render();
         }
-      } catch (e) { console.error('Check follows error:', e); }
+      } catch (e) { console.error(e); }
     }
 
     function render() {
-      console.log('Rendering viewer friends');
       if (friends.length === 0) {
         bar.innerHTML = '<div class="no-friends">No friends added yet</div>';
         return;
@@ -181,7 +182,7 @@
         const div = document.createElement('div');
         div.className = 'friend';
         div.innerHTML = `
-          <img src="${f.profile_image_url}" alt="${f.display_name}">
+          <img src="${f.profile_image_url || 'https://static-cdn.jtvnw.net/ttv-static/404_preview-40x40.png'}" alt="${f.display_name}">
           <div class="name">${f.display_name}</div>
           <button class="${isFollowing ? 'following' : 'follow'}" onclick="window.open('https://twitch.tv/${f.login}', '_blank')">
             ${isFollowing ? '♥ Following' : '♡ Follow'}
@@ -191,31 +192,33 @@
       });
     }
 
-    Twitch.ext.onAuthorized(async (auth) => {
-      userId = auth.userId;
-      helixToken = auth.helixToken;
-      console.log('Viewer authorized with helixToken:', !!helixToken, 'userId:', userId);
-      const liveRes = await fetch(`https://api.twitch.tv/helix/streams?user_id=${auth.channelId}`, {
-        headers: { 'Client-ID': clientId, 'Authorization': `Bearer ${helixToken}` }
+    if (isTwitchContext) {
+      Twitch.ext.onAuthorized(async (auth) => {
+        userId = auth.userId;
+        helixToken = auth.helixToken;
+        const liveRes = await fetch(`https://api.twitch.tv/helix/streams?user_id=${auth.channelId}`, {
+          headers: { 'Client-ID': clientId, 'Authorization': `Bearer ${helixToken}` }
+        });
+        const liveData = await liveRes.json();
+        const isLive = !!liveData.data?.[0];
+        container.style.display = isLive ? 'flex' : 'none';
+        if (isLive) {
+          await loadFriends();
+          await checkFollows();
+        }
       });
-      const liveData = await liveRes.json();
-      const isLive = !!liveData.data?.[0];
-      container.style.display = isLive ? 'flex' : 'none';
-      if (isLive) {
+
+      Twitch.ext.configuration.onChanged(async () => {
         await loadFriends();
-        if (friends.length > 0) await checkFollows();
-        render();
-      }
-    });
+        await checkFollows();
+      });
 
-    Twitch.ext.configuration.onChanged(async () => {
-      console.log('Viewer config changed');
-      await loadFriends();
-      if (friends.length > 0) await checkFollows();
+      Twitch.ext.onError((e) => console.error(e));
+    } else {
+      loadFriends(); // Fallback for direct load
+      container.style.display = 'flex'; // Show for testing
       render();
-    });
-
-    Twitch.ext.onError((e) => console.error('Twitch error:', e));
+    }
   </script>
 </body>
 </html>
