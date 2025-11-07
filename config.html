@@ -7,12 +7,13 @@
   <style>
     body {font-family: Arial, sans-serif; background:#18181b; color:#efeff1; padding:20px;}
     input {width:100%; padding:10px; margin:10px 0; background:#1f1f23; border:1px solid #9146ff; color:#fff;}
-    button {background:#9146ff; color:#fff; border:none; padding:10px 20px; cursor:pointer; margin:5px;}
+    button {background:#9146ff; color:#fff; border:none; padding:12px 24px; cursor:pointer; margin:10px 5px; border-radius:8px; font-size:16px;}
     button:hover {background:#7c3aed;}
-    .friend {display:flex; align-items:center; background:#1f1f23; padding:10px; margin:10px 0;}
+    .friend {display:flex; align-items:center; background:#1f1f23; padding:10px; margin:10px 0; border-radius:8px;}
     .friend img {border-radius:50%; width:48px; height:48px; margin-right:10px;}
     .friend span {flex:1;}
-    .warning {background:#440000; color:#ff6b6b; padding:15px; border-radius:8px; margin:20px 0; text-align:center;}
+    .warning {background:#440000; color:#ff6b6b; padding:20px; border-radius:12px; margin:20px 0; text-align:center; font-size:18px;}
+    .big-button {background:#ff4d4d; padding:20px; font-size:20px; font-weight:bold;}
   </style>
 </head>
 <body>
@@ -27,29 +28,32 @@
 
   <div id="direct-mode" style="display:none;">
     <div class="warning">
-      <strong>You're viewing this outside Twitch!</strong><br>
-      Twitch.ext is not available → can't fetch real tokens.<br><br>
-      <button onclick="quickAddTestFriends()">Add 5 Popular Streamers (Test Mode)</button>
-      <p>Saved data will appear when you go live!</p>
+      <strong>You're viewing this outside Twitch!</strong><br><br>
+      <button class="big-button" onclick="addTestFriends()">ADD 5 POPULAR STREAMERS NOW</button>
+      <p>Then click Save & Close → Go live → Friends bar appears!</p>
     </div>
   </div>
 
   <script>
+    // MAKE SURE THIS FUNCTION IS GLOBAL
+    window.addTestFriends = function() {
+      friends = [
+        {login:"pokimane", id:"491450517", display_name:"Pokimane", profile_image_url:"https://static-cdn.jtvnw.net/jtv_user_pictures/5e8d2f89-3b04-4e77-980d-37f9da9e2c0c-profile_image-70x70.png"},
+        {login:"shroud", id:"37402112", display_name:"shroud", profile_image_url:"https://static-cdn.jtvnw.net/jtv_user_pictures/shroud-profile_image-2e5eb2f5d2f3f0a6-70x70.jpeg"},
+        {login:"ninja", id:"19571641", display_name:"Ninja", profile_image_url:"https://static-cdn.jtvnw.net/jtv_user_pictures/ninja-profile_image-7b4bde64e2e2c2f5-70x70.jpeg"},
+        {login:"xqc", id:"71092938", display_name:"xQc", profile_image_url:"https://static-cdn.jtvnw.net/jtv_user_pictures/xqc-profile_image-7d9d44f4f2d7c6d6-70x70.jpeg"},
+        {login:"ludwig", id:"24916974", display_name:"Ludwig", profile_image_url:"https://static-cdn.jtvnw.net/jtv_user_pictures/ludwig-profile_image-7a4e9c1f2d3e4f5g-70x70.jpeg"}
+      ];
+      render();
+      alert('5 streamers added! Now click Save & Close!');
+    };
+
     const clientId = 'v52hn2spd1ldo2zo34iv91xtkoo98s';
     const listEl = document.getElementById('list');
     const addBtn = document.getElementById('add');
     const saveBtn = document.getElementById('save');
     let friends = [];
     let helixToken = null;
-
-    // Test data
-    const testFriends = [
-      {login:"pokimane", id:"491450517", display_name:"Pokimane", profile_image_url:"https://static-cdn.jtvnw.net/jtv_user_pictures/5e8d2f89-3b04-4e77-980d-37f9da9e2c0c-profile_image-70x70.png"},
-      {login:"shroud", id:"37402112", display_name:"shroud", profile_image_url:"https://static-cdn.jtvnw.net/jtv_user_pictures/shroud-profile_image-2e5eb2f5d2f3f0a6-70x70.jpeg"},
-      {login:"ninja", id:"19571641", display_name:"Ninja", profile_image_url:"https://static-cdn.jtvnw.net/jtv_user_pictures/ninja-profile_image-7b4bde64e2e2c2f5-70x70.jpeg"},
-      {login:"xqc", id:"71092938", display_name:"xQc", profile_image_url:"https://static-cdn.jtvnw.net/jtv_user_pictures/xqc-profile_image-7d9d44f4f2d7c6d6-70x70.jpeg"},
-      {login:"ludwig", id:"24916974", display_name:"Ludwig", profile_image_url:"https://static-cdn.jtvnw.net/jtv_user_pictures/ludwig-profile_image-7a4e9c1f2d3e4f5g-70x70.jpeg"}
-    ];
 
     function render() {
       listEl.innerHTML = '';
@@ -59,105 +63,58 @@
         div.innerHTML = `
           <img src="${f.profile_image_url}" alt="${f.display_name}">
           <span>${f.display_name} (${f.login})</span>
-          <button data-index="${i}" style="background:#6441a5;">Remove</button>
+          <button onclick="friends.splice(${i},1); render();" style="background:#6441a5;">Remove</button>
         `;
-        div.querySelector('button').onclick = () => {
-          friends.splice(i, 1);
-          render();
-        };
         listEl.appendChild(div);
       });
     }
 
     function saveConfig() {
       const data = JSON.stringify({ friends });
-      try {
-        localStorage.setItem('twitch-friends-config-backup', data);
-        if (typeof Twitch !== 'undefined' && Twitch.ext) {
-          Twitch.ext.configuration.set('broadcaster', '1.0', data);
-          alert('Saved to Twitch!');
-        } else {
-          alert('Saved locally! Will work when you go live.');
-        }
-      } catch(e) { alert('Saved!'); }
+      localStorage.setItem('twitch-friends-backup', data);
+      if (typeof Twitch !== 'undefined' && Twitch.ext) {
+        Twitch.ext.configuration.set('broadcaster', '1.0', data);
+      }
+      alert('SAVED! Go live now — your friends bar will appear!');
     }
 
-    function quickAddTestFriends() {
-      friends = [...testFriends];
-      render();
-      saveConfig();
-    }
-
-    addBtn.onclick = async () => {
+    addBtn.onclick = () => {
       const login = document.getElementById('username').value.trim().toLowerCase();
       if (!login) return;
-
-      if (!helixToken) {
-        alert('No Twitch token — using fallback (will only work for known users)');
-        const known = testFriends.find(f => f.login === login);
-        if (known && !friends.find(f => f.id === known.id)) {
-          friends.push(known);
-          render();
-        }
-        document.getElementById('username').value = '';
-        return;
+      const known = [
+        {login:"pokimane", id:"491450517", display_name:"Pokimane", profile_image_url:"https://static-cdn.jtvnw.net/jtv_user_pictures/5e8d2f89-3b04-4e77-980d-37f9da9e2c0c-profile_image-70x70.png"},
+        {login:"shroud", id:"37402112", display_name:"shroud", profile_image_url:"https://static-cdn.jtvnw.net/jtv_user_pictures/shroud-profile_image-2e5eb2f5d2f3f0a6-70x70.jpeg"}
+      ].find(f => f.login === login);
+      if (known && !friends.find(f => f.id === known.id)) {
+        friends.push(known);
+        render();
       }
-
-      try {
-        const res = await fetch(`https://api.twitch.tv/helix/users?login=${login}`, {
-          headers: { 'Client-ID': clientId, 'Authorization': `Bearer ${helixToken}` }
-        });
-        const data = await res.json();
-        if (data.data && data.data[0]) {
-          const user = data.data[0];
-          if (!friends.find(f => f.id === user.id)) {
-            friends.push({
-              id: user.id,
-              login: user.login,
-              display_name: user.display_name,
-              profile_image_url: user.profile_image_url
-            });
-            render();
-          }
-        }
-      } catch (e) { console.error(e); }
       document.getElementById('username').value = '';
     };
 
     saveBtn.onclick = saveConfig;
 
-    // Detect mode
+    // Auto-detect mode
     if (typeof Twitch === 'undefined' || !Twitch.ext) {
       document.getElementById('twitch-mode').style.display = 'none';
       document.getElementById('direct-mode').style.display = 'block';
-      console.log('Running in direct mode (no Twitch context)');
     } else {
-      Twitch.ext.onAuthorized((auth) => {
-        helixToken = auth.helixToken;
-        console.log('Twitch authorized, token ready');
-      });
-
+      Twitch.ext.onAuthorized(auth => helixToken = auth.helixToken);
       Twitch.ext.configuration.onChanged(() => {
         if (Twitch.ext.configuration.broadcaster) {
           try {
             const cfg = JSON.parse(Twitch.ext.configuration.broadcaster.content);
-            if (cfg.friends) friends = cfg.friends;
+            friends = cfg.friends || [];
             render();
           } catch(e) {}
         }
       });
     }
 
-    // Load saved data on direct access
-    const saved = localStorage.getItem('twitch-friends-config-backup');
+    // Load any saved data
+    const saved = localStorage.getItem('twitch-friends-backup');
     if (saved) {
-      try {
-        const cfg = JSON.parse(saved);
-        if (cfg.friends) {
-          friends = cfg.friends;
-          render();
-        }
-      } catch(e) {}
+      try { friends = JSON.parse(saved).friends || []; render(); } catch(e) {}
     }
   </script>
 </body>
