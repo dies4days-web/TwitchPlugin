@@ -6,101 +6,112 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://extension-files.twitch.tv/extension-files/com.example.videocomponent-0.0.1/viewer.js"></script>
   <style>
-    #twitch-friends-tab {
-      position: fixed;
-      top: 100px;
-      left: 0;
-      width: 40px;
-      height: 120px;
-      background: #9146ff;
-      border-radius: 0 12px 12px 0;
-      box-shadow: 0 0 20px #9146ff, 0 0 40px #9146ff;
-      cursor: pointer;
-      z-index: 2147483647;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: bold;
-      writing-mode: vertical-rl;
-      text-orientation: mixed;
-      transition: transform 0.3s ease;
-      user-select: none;
-    }
-    #twitch-friends-tab:hover { transform: translateX(5px); }
-
-    #twitch-friends-bar {
+    #twitch-friends-container {
       position: fixed;
       top: 0;
-      left: -400px;
+      left: -340px;
       width: 380px;
-      height: 110px;
+      height: 55px;
+      z-index: 2147483647;
+      transition: left 0.4s ease;
+      display: flex;
+      box-sizing: border-box;
+    }
+    #twitch-friends-container.open { left: 0; }
+
+    #twitch-friends-bar {
+      width: 340px;
       background: rgba(15, 15, 20, 0.95);
       border-right: 3px solid #9146ff;
       backdrop-filter: blur(10px);
-      z-index: 2147483647;
-      transition: left 0.4s ease;
-      padding: 10px;
+      padding: 5px;
       box-sizing: border-box;
       overflow-x: auto;
       white-space: nowrap;
       display: flex;
       align-items: center;
-      gap: 15px;
+      gap: 10px;
     }
-    #twitch-friends-bar.open { left: 0; }
+
+    #twitch-friends-tab {
+      width: 40px;
+      background: #9146ff;
+      border-radius: 0 12px 12px 0;
+      box-shadow: 0 0 20px #9146ff, 0 0 40px #9146ff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 12px;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      user-select: none;
+    }
+    #twitch-friends-tab:hover { transform: scale(1.05); }
 
     .friend {
       display: inline-flex;
       flex-direction: column;
       align-items: center;
       text-align: center;
-      min-width: 80px;
+      min-width: 70px;
     }
     .friend img {
-      width: 64px;
-      height: 64px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
-      border: 3px solid #222;
+      border: 2px solid #222;
     }
     .friend .name {
       color: #fff;
-      margin: 6px 0 4px;
-      font-size: 14px;
-      max-width: 80px;
+      margin: 2px 0;
+      font-size: 12px;
+      max-width: 70px;
       overflow: hidden;
       text-overflow: ellipsis;
     }
     .friend button {
-      background: #23a55a;
-      color: white;
+      background: transparent;
+      color: #fff;
       border: none;
-      padding: 4px 10px;
+      padding: 2px 6px;
       border-radius: 4px;
-      font-size: 12px;
+      font-size: 10px;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
+    .friend button.follow { color: #aaa; }
+    .friend button.follow:hover { color: #fff; }
+    .friend button.following { color: #f00; }
+    .friend button.following:hover { color: #d00; }
     .no-friends {
       color: #aaa;
-      font-size: 18px;
-      margin-left: 20px;
+      font-size: 14px;
+      margin-left: 15px;
     }
   </style>
 </head>
 <body>
-  <div id="twitch-friends-tab">FRIENDS</div>
-  <div id="twitch-friends-bar"></div>
+  <div id="twitch-friends-container">
+    <div id="twitch-friends-bar"></div>
+    <div id="twitch-friends-tab">FRIENDS</div>
+  </div>
 
   <script>
     const clientId = 'YOUR_CLIENT_ID'; // ← REPLACE WITH YOUR EXTENSION CLIENT ID
+    const container = document.getElementById('twitch-friends-container');
     const tab = document.getElementById('twitch-friends-tab');
     const bar = document.getElementById('twitch-friends-bar');
-    let open = false;
     let friends = [];
+    let followed = new Set();
+    let userId = null;
 
     tab.onclick = () => {
-      open = !open;
-      bar.classList.toggle('open', open);
+      container.classList.toggle('open');
     };
 
     async function loadFriends() {
@@ -108,8 +119,21 @@
       try {
         const cfg = JSON.parse(Twitch.ext.configuration.broadcaster);
         friends = cfg.friends || [];
+        if (friends.length > 0 && userId) await checkFollows();
         render();
       } catch (e) {}
+    }
+
+    async function checkFollows() {
+      try {
+        let url = `https://api.twitch.tv/helix/users/follows?from_id=${userId}`;
+        friends.forEach(f => { url += `&to_id=${f.id}`; });
+        const res = await fetch(url, {
+          headers: { 'Client-ID': clientId, 'Authorization': `Bearer ${Twitch.ext.viewer.opaqueId ? Twitch.ext.viewer.sessionToken : ''}` }
+        });
+        const data = await res.json();
+        followed = new Set(data.data.map(f => f.to_id));
+      } catch (e) { console.error(e); }
     }
 
     function render() {
@@ -119,25 +143,28 @@
       }
       bar.innerHTML = '';
       friends.forEach(f => {
+        const isFollowing = followed.has(f.id);
         const div = document.createElement('div');
         div.className = 'friend';
         div.innerHTML = `
           <img src="${f.profile_image_url}" alt="${f.display_name}">
           <div class="name">${f.display_name}</div>
-          <button onclick="window.open('https://twitch.tv/${f.login}', '_blank')">Follow</button>
+          <button class="${isFollowing ? 'following' : 'follow'}" onclick="window.open('https://twitch.tv/${f.login}', '_blank')">
+            ${isFollowing ? '♥ Following' : '♡ Follow'}
+          </button>
         `;
         bar.appendChild(div);
       });
     }
 
     Twitch.ext.onAuthorized(async (auth) => {
-      // Hide tab when streamer is offline
+      userId = auth.userId;
       const liveRes = await fetch(`https://api.twitch.tv/helix/streams?user_id=${auth.channelId}`, {
         headers: { 'Client-ID': clientId, 'Authorization': `Bearer ${auth.token}` }
       });
       const liveData = await liveRes.json();
       const isLive = !!liveData.data?.[0];
-      tab.style.display = isLive ? 'flex' : 'none';
+      container.style.display = isLive ? 'flex' : 'none';
       if (isLive) loadFriends();
     });
 
