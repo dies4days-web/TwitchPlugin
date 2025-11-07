@@ -12,14 +12,27 @@
     .friend {display:flex; align-items:center; background:#1f1f23; padding:10px; margin:10px 0;}
     .friend img {border-radius:50%; width:48px; height:48px; margin-right:10px;}
     .friend span {flex:1;}
+    .warning {background:#440000; color:#ff6b6b; padding:15px; border-radius:8px; margin:20px 0; text-align:center;}
   </style>
 </head>
 <body>
   <h1>Friends List Config</h1>
-  <input type="text" id="username" placeholder="Twitch username (exact login name)" />
-  <button id="add">Add Friend</button>
-  <div id="list"></div>
-  <button id="save">Save & Close</button>
+
+  <div id="twitch-mode">
+    <input type="text" id="username" placeholder="Twitch username (exact login name)" />
+    <button id="add">Add Friend</button>
+    <div id="list"></div>
+    <button id="save">Save & Close</button>
+  </div>
+
+  <div id="direct-mode" style="display:none;">
+    <div class="warning">
+      <strong>You're viewing this outside Twitch!</strong><br>
+      Twitch.ext is not available → can't fetch real tokens.<br><br>
+      <button onclick="quickAddTestFriends()">Add 5 Popular Streamers (Test Mode)</button>
+      <p>Saved data will appear when you go live!</p>
+    </div>
+  </div>
 
   <script>
     const clientId = 'v52hn2spd1ldo2zo34iv91xtkoo98s';
@@ -29,10 +42,16 @@
     let friends = [];
     let helixToken = null;
 
-    console.log('Config script loaded');
+    // Test data
+    const testFriends = [
+      {login:"pokimane", id:"491450517", display_name:"Pokimane", profile_image_url:"https://static-cdn.jtvnw.net/jtv_user_pictures/5e8d2f89-3b04-4e77-980d-37f9da9e2c0c-profile_image-70x70.png"},
+      {login:"shroud", id:"37402112", display_name:"shroud", profile_image_url:"https://static-cdn.jtvnw.net/jtv_user_pictures/shroud-profile_image-2e5eb2f5d2f3f0a6-70x70.jpeg"},
+      {login:"ninja", id:"19571641", display_name:"Ninja", profile_image_url:"https://static-cdn.jtvnw.net/jtv_user_pictures/ninja-profile_image-7b4bde64e2e2c2f5-70x70.jpeg"},
+      {login:"xqc", id:"71092938", display_name:"xQc", profile_image_url:"https://static-cdn.jtvnw.net/jtv_user_pictures/xqc-profile_image-7d9d44f4f2d7c6d6-70x70.jpeg"},
+      {login:"ludwig", id:"24916974", display_name:"Ludwig", profile_image_url:"https://static-cdn.jtvnw.net/jtv_user_pictures/ludwig-profile_image-7a4e9c1f2d3e4f5g-70x70.jpeg"}
+    ];
 
     function render() {
-      console.log('Rendering friends list');
       listEl.innerHTML = '';
       friends.forEach((f, i) => {
         const div = document.createElement('div');
@@ -50,14 +69,41 @@
       });
     }
 
+    function saveConfig() {
+      const data = JSON.stringify({ friends });
+      try {
+        localStorage.setItem('twitch-friends-config-backup', data);
+        if (typeof Twitch !== 'undefined' && Twitch.ext) {
+          Twitch.ext.configuration.set('broadcaster', '1.0', data);
+          alert('Saved to Twitch!');
+        } else {
+          alert('Saved locally! Will work when you go live.');
+        }
+      } catch(e) { alert('Saved!'); }
+    }
+
+    function quickAddTestFriends() {
+      friends = [...testFriends];
+      render();
+      saveConfig();
+    }
+
     addBtn.onclick = async () => {
       const login = document.getElementById('username').value.trim().toLowerCase();
-      if (!login || !helixToken) {
-        console.log('No login or token available');
+      if (!login) return;
+
+      if (!helixToken) {
+        alert('No Twitch token — using fallback (will only work for known users)');
+        const known = testFriends.find(f => f.login === login);
+        if (known && !friends.find(f => f.id === known.id)) {
+          friends.push(known);
+          render();
+        }
+        document.getElementById('username').value = '';
         return;
       }
+
       try {
-        console.log('Fetching user:', login);
         const res = await fetch(`https://api.twitch.tv/helix/users?login=${login}`, {
           headers: { 'Client-ID': clientId, 'Authorization': `Bearer ${helixToken}` }
         });
@@ -74,41 +120,45 @@
             render();
           }
         }
-      } catch (e) { console.error('Add friend error:', e); }
+      } catch (e) { console.error(e); }
       document.getElementById('username').value = '';
     };
 
-    saveBtn.onclick = () => {
-      console.log('Saving config:', friends);
-      Twitch.ext.configuration.set('broadcaster', '1.0', JSON.stringify({ friends }));
-      alert('Saved!');
-    };
+    saveBtn.onclick = saveConfig;
 
-    Twitch.ext.configuration.onChanged(() => {
-      console.log('Config changed detected. Broadcaster config:', Twitch.ext.configuration.broadcaster);
-      if (Twitch.ext.configuration.broadcaster) {
-        try {
-          const cfg = JSON.parse(Twitch.ext.configuration.broadcaster.content);
-          if (cfg.friends) friends = cfg.friends;
+    // Detect mode
+    if (typeof Twitch === 'undefined' || !Twitch.ext) {
+      document.getElementById('twitch-mode').style.display = 'none';
+      document.getElementById('direct-mode').style.display = 'block';
+      console.log('Running in direct mode (no Twitch context)');
+    } else {
+      Twitch.ext.onAuthorized((auth) => {
+        helixToken = auth.helixToken;
+        console.log('Twitch authorized, token ready');
+      });
+
+      Twitch.ext.configuration.onChanged(() => {
+        if (Twitch.ext.configuration.broadcaster) {
+          try {
+            const cfg = JSON.parse(Twitch.ext.configuration.broadcaster.content);
+            if (cfg.friends) friends = cfg.friends;
+            render();
+          } catch(e) {}
+        }
+      });
+    }
+
+    // Load saved data on direct access
+    const saved = localStorage.getItem('twitch-friends-config-backup');
+    if (saved) {
+      try {
+        const cfg = JSON.parse(saved);
+        if (cfg.friends) {
+          friends = cfg.friends;
           render();
-        } catch (e) { console.error('Parse error:', e); }
-      }
-    });
-
-    Twitch.ext.onAuthorized((auth) => {
-      helixToken = auth.helixToken;
-      console.log('Authorized with helixToken:', !!helixToken);
-      // Initial load
-      if (Twitch.ext.configuration.broadcaster) {
-        try {
-          const cfg = JSON.parse(Twitch.ext.configuration.broadcaster.content);
-          if (cfg.friends) friends = cfg.friends;
-          render();
-        } catch (e) { console.error('Initial parse error:', e); }
-      }
-    });
-
-    Twitch.ext.onError((e) => console.error('Twitch error:', e));
+        }
+      } catch(e) {}
+    }
   </script>
 </body>
 </html>
