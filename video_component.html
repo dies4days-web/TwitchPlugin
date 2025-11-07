@@ -131,11 +131,14 @@
     let userId = null;
     let helixToken = null;
 
+    console.log('Viewer script loaded');
+
     tab.onclick = () => {
       container.classList.toggle('open');
     };
 
     async function loadFriends() {
+      console.log('Loading friends. Broadcaster config:', Twitch.ext.configuration.broadcaster);
       if (Twitch.ext.configuration.broadcaster) {
         try {
           const cfg = JSON.parse(Twitch.ext.configuration.broadcaster.content);
@@ -146,10 +149,14 @@
     }
 
     async function checkFollows() {
-      if (!helixToken || !userId) return;
+      if (!helixToken || !userId) {
+        console.log('No helixToken or userId for follows check');
+        return;
+      }
       try {
         let url = `https://api.twitch.tv/helix/channels/followed?user_id=${userId}`;
         friends.forEach(f => { url += `&broadcaster_id=${f.id}`; });
+        console.log('Fetching follows:', url);
         const res = await fetch(url, {
           headers: { 'Client-ID': clientId, 'Authorization': `Bearer ${helixToken}` }
         });
@@ -163,6 +170,7 @@
     }
 
     function render() {
+      console.log('Rendering viewer friends');
       if (friends.length === 0) {
         bar.innerHTML = '<div class="no-friends">No friends added yet</div>';
         return;
@@ -186,7 +194,7 @@
     Twitch.ext.onAuthorized(async (auth) => {
       userId = auth.userId;
       helixToken = auth.helixToken;
-      console.log('Viewer authorized');
+      console.log('Viewer authorized with helixToken:', !!helixToken, 'userId:', userId);
       const liveRes = await fetch(`https://api.twitch.tv/helix/streams?user_id=${auth.channelId}`, {
         headers: { 'Client-ID': clientId, 'Authorization': `Bearer ${helixToken}` }
       });
