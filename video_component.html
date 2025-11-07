@@ -3,63 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Friends Bar</title>
+    <title>Friends Horizontal Bar</title>
     <style>
         body { margin:0; padding:0; background:transparent; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
         #bar {
             position: absolute;
-            top: 0; left: -80px;
-            width: 80px; height: 100vh;
+            bottom: -100px; left: 0;
+            width: 100vw; height: 100px;
             background: rgba(17,17,17,0.98);
-            backdrop-filter: blur(12px);
-            border-right: 1px solid #333;
-            box-shadow: 8px 0 30px rgba(0,0,0,0.4);
-            transition: left 0.35s cubic-bezier(0.4,0,0.2,1);
+            backdrop-filter: blur(15px);
+            border-top: 1px solid #333;
+            box-shadow: 0 -8px 30px rgba(0,0,0,0.5);
+            transition: bottom 0.4s cubic-bezier(0.4,0,0.2,1);
             z-index: 10000;
             display: flex;
-            flex-direction: column;
+            align-items: center;
+            overflow: hidden;
         }
-        #bar.open { left: 0; }
-        
+        #bar.open { bottom: 0; }
+
         #tab {
             position: absolute;
-            right: -50px; top: 50%;
-            transform: translateY(-50%);
-            width: 50px; height: 50px;
+            top: -50px; left: 50%;
+            transform: translateX(-50%);
+            width: 60px; height: 50px;
             background: #9147ff;
-            border-radius: 0 12px 12px 0;
+            border-radius: 20px 20px 0 0;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 4px 0 15px rgba(0,0,0,0.3);
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.4);
             transition: all 0.3s;
         }
-        #tab:hover { background:#a970ff; transform: translateY(-50%) scale(1.05); }
-        #tab svg { width:24px; height:24px; fill:white; transition: transform 0.3s; }
+        #tab:hover { background:#a970ff; transform: translateX(-50%) scale(1.05); }
+        #tab svg { width:28px; height:28px; fill:white; transition: transform 0.3s; }
         #bar.open #tab svg { transform: rotate(180deg); }
-        
-        #list {
-            flex: 1; overflow-y: auto; padding: 20px 8px;
-            display: flex; flex-direction: column; gap: 12px;
+
+        #scroll-container {
+            flex: 1; overflow-x: auto; overflow-y: hidden;
+            padding: 0 20px;
+            display: flex;
+            gap: 20px;
+            scrollbar-width: none;
         }
+        #scroll-container::-webkit-scrollbar { display: none; }
+
         .friend {
-            text-align: center; color: white;
+            text-align: center; min-width: 80px; color: white;
         }
         .friend img {
-            width: 48px; height: 48px;
-            border-radius: 50%; border: 2px solid #9147ff;
+            width: 56px; height: 56px;
+            border-radius: 50%; border: 3px solid #9147ff;
             object-fit: cover;
         }
         .friend .name {
-            font-size: 11px; margin: 6px 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            font-size: 12px; margin: 8px 0 6px; font-weight: 600;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px;
         }
         .friend button {
-            background: #28a745; color: white; border: none; border-radius: 6px;
-            padding: 4px 8px; font-size: 10px; cursor: pointer;
+            background: #28a745; color: white; border: none; border-radius: 8px;
+            padding: 6px 12px; font-size: 11px; cursor: pointer; font-weight: 600;
         }
         .friend button:hover { background:#218838; }
-        .empty { color:#888; text-align:center; padding:40px 10px; font-size:13px; }
+        .empty { color:#888; text-align:center; width:100%; font-size:14px; }
     </style>
 </head>
 <body>
@@ -67,14 +74,14 @@
         <div id="tab" onclick="document.getElementById('bar').classList.toggle('open')">
             <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
         </div>
-        <div id="list"></div>
-        <div id="empty" class="empty">No friends yet</div>
+        <div id="scroll-container"></div>
+        <div id="empty" class="empty">No friends added yet</div>
     </div>
 
     <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
     <script>
         const bar = document.getElementById('bar');
-        const list = document.getElementById('list');
+        const container = document.getElementById('scroll-container');
         const empty = document.getElementById('empty');
         let friends = [], token = '', clientId = '';
 
@@ -93,7 +100,7 @@
         }
 
         async function fetchAll() {
-            list.innerHTML = '';
+            container.innerHTML = ''; empty.style.display = 'none';
             for (const login of friends) {
                 try {
                     const r = await fetch(`https://api.twitch.tv/helix/users?login=${login}`, {
@@ -103,7 +110,7 @@
                     if (d.data?.[0]) addFriend(d.data[0]);
                 } catch (e) { console.error(e); }
             }
-            if (!list.children.length) showEmpty();
+            if (!container.children.length) showEmpty();
         }
 
         function addFriend(u) {
@@ -114,12 +121,12 @@
                 <div class="name">@${u.display_name}</div>
                 <button onclick="window.Twitch.ext.actions.followChannel('${u.login}')">Follow</button>
             `;
-            list.appendChild(div);
+            container.appendChild(div);
         }
 
         function showEmpty() {
             empty.style.display = 'block';
-            list.innerHTML = '';
+            container.innerHTML = '';
         }
 
         window.Twitch.ext.onVisibilityChanged(v => { if (!v) bar.classList.remove('open'); });
