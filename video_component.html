@@ -1,138 +1,40 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Top-Left Friends Bar</title>
-    <style>
-        body { margin:0; padding:0; background:transparent; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
-        #bar {
-            position: absolute;
-            top: 0; left: -100%;
-            width: 100vw; height: 100px;
-            background: rgba(17,17,17,0.98);
-            backdrop-filter: blur(15px);
-            border-bottom: 1px solid #333;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
-            transition: left 0.4s cubic-bezier(0.4,0,0.2,1);
-            z-index: 2147483647 !important;
-            display: flex;
-            align-items: center;
-            overflow: hidden;
-            pointer-events: auto !important;
-        }
-        #bar.open { left: 0; }
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:transparent;font-family:system-ui}
+#bar,#tab{position:fixed!important;z-index:2147483647!important;top:0;left:-100%;width:100%;height:110px;background:rgba(0,0,0,0.95);backdrop-filter:blur(20px);border-bottom:3px solid #9147ff;transition:left .5s;display:flex;align-items:center}
+#bar.open{left:0}
+#tab{right:-90px;width:90px;height:70px;background:#9147ff;border-radius:0 35px 35px 0;cursor:pointer;animation:p 2s infinite}
+@keyframes p{0%,100%{box-shadow:0 0 0 0 #9147ff}50%{box-shadow:0 0 0 30px transparent}}
+#tab svg{width:40px;height:40px;fill:white}
+#list{flex:1;overflow-x:auto;padding:0 100px 0 20px;display:flex;gap:25px;scrollbar-width:none}
+.f{text-align:center;min-width:90px;color:white}
+.f img{width:64px;height:64px;border-radius:50%;border:4px solid #9147ff}
+.f div{margin:8px 0;font-weight:bold}
+.f button{background:#28a745;color:white;border:none;padding:8px 16px;border-radius:8px;cursor:pointer}
+</style></head><body>
+<div id="bar"><div id="tab" onclick="document.getElementById('bar').classList.toggle('open')">
+<svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+</div><div id="list"></div></div>
 
-        #tab {
-            position: absolute;
-            right: -70px; top: 25px;
-            width: 70px; height: 50px;
-            background: #9147ff;
-            border-radius: 0 25px 25px 0;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 6px 0 20px rgba(145,71,255,0.8) !important;
-            transition: all 0.3s;
-            z-index: 2147483647 !important;
-            pointer-events: auto !important;
-        }
-        #tab:hover { background:#c28fff; transform: scale(1.1); }
-        #tab svg { width:32px; height:32px; fill:white; transition: transform 0.3s; }
-        #bar.open #tab svg { transform: rotate(180deg); }
-
-        #scroll-container {
-            flex: 1; overflow-x: auto; overflow-y: hidden;
-            padding: 0 90px 0 20px;
-            display: flex;
-            gap: 24px;
-            scrollbar-width: none;
-        }
-        #scroll-container::-webkit-scrollbar { display: none; }
-
-        .friend {
-            text-align: center; min-width: 90px; color: white;
-        }
-        .friend img {
-            width: 60px; height: 60px;
-            border-radius: 50%; border: 3px solid #9147ff;
-            object-fit: cover;
-        }
-        .friend .name {
-            font-size: 13px; margin: 8px 0 6px; font-weight: 600;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px;
-        }
-        .friend button {
-            background: #28a745; color: white; border: none; border-radius: 8px;
-            padding: 6px 12px; font-size: 11px; cursor: pointer; font-weight: 600;
-        }
-        .friend button:hover { background:#218838; }
-        .empty { color:#888; text-align:center; width:100%; font-size:15px; padding-left: 20px; }
-    </style>
-</head>
-<body>
-    <div id="bar">
-        <div id="tab" onclick="document.getElementById('bar').classList.toggle('open')">
-            <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
-        </div>
-        <div id="scroll-container"></div>
-        <div id="empty" class="empty">No friends added yet</div>
-    </div>
-
-    <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
-    <script>
-        const bar = document.getElementById('bar');
-        const container = document.getElementById('scroll-container');
-        const empty = document.getElementById('empty');
-        let friends = [], token = '', clientId = '';
-
-        window.Twitch.ext.onAuthorized(a => {
-            token = a.helixToken; clientId = a.clientId;
-            window.Twitch.ext.configuration.onChanged(load);
-            load();
-        });
-
-        function load() {
-            if (!window.Twitch.ext.configuration.broadcaster?.content) return showEmpty();
-            try {
-                friends = JSON.parse(window.Twitch.ext.configuration.broadcaster.content) || [];
-                friends.length ? fetchAll() : showEmpty();
-            } catch { showEmpty(); }
-        }
-
-        async function fetchAll() {
-            container.innerHTML = ''; empty.style.display = 'none';
-            for (const login of friends) {
-                try {
-                    const r = await fetch(`https://api.twitch.tv/helix/users?login=${login}`, {
-                        headers: { 'Authorization': `Bearer ${token}`, 'Client-Id': clientId }
-                    });
-                    const d = await r.json();
-                    if (d.data?.[0]) addFriend(d.data[0]);
-                } catch (e) { console.error(e); }
-            }
-            if (!container.children.length) showEmpty();
-        }
-
-        function addFriend(u) {
-            const div = document.createElement('div');
-            div.className = 'friend';
-            div.innerHTML = `
-                <img src="${u.profile_image_url}" alt="${u.login}">
-                <div class="name">@${u.display_name}</div>
-                <button onclick="window.Twitch.ext.actions.followChannel('${u.login}')">Follow</button>
-            `;
-            container.appendChild(div);
-        }
-
-        function showEmpty() {
-            empty.style.display = 'flex';
-            empty.style.alignItems = 'center';
-            container.innerHTML = '';
-        }
-
-        window.Twitch.ext.onVisibilityChanged(v => { if (!v) bar.classList.remove('open'); });
-    </script>
-</body>
-</html>
+<script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
+<script>
+const bar=document.getElementById('bar'),list=document.getElementById('list');
+let token='',id='';
+window.Twitch.ext.onAuthorized(a=>{token=a.helixToken;id=a.clientId;load()});
+window.Twitch.ext.configuration.onChanged(load);
+async function load(){
+  try{
+    const f=JSON.parse(window.Twitch.ext.configuration.broadcaster?.content||'[]');
+    list.innerHTML='';
+    for(const u of f){
+      const r=await fetch(`https://api.twitch.tv/helix/users?login=${u}`,{headers:{'Authorization':'Bearer '+token,'Client-Id':id}});
+      const d=await r.json();
+      if(d.data?.[0]){
+        const x=d.data[0];
+        list.innerHTML+=`<div class="f"><img src="${x.profile_image_url}"><div>@${x.display_name}</div><button onclick="window.Twitch.ext.actions.followChannel('${x.login}')">Follow</button></div>`;
+      }
+    }
+  }catch(e){}
+}
+window.Twitch.ext.onVisibilityChanged(v=>{if(!v)bar.classList.remove('open');});
+</script>
+</body></html>
