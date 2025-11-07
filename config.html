@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friends Follow Extension - Configuration</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f6f8fa;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1, h2 {
+            color: #24292e;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        h2 {
+            font-size: 18px;
+            margin-top: 30px;
+            margin-bottom: 10px;
+        }
+        p {
+            margin-bottom: 15px;
+            color: #586069;
+        }
+        .instructions {
+            background-color: #fff;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .form-container {
+            background-color: #fff;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        #friends-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 20px 0;
+        }
+        #friends-list li {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: #f6f8fa;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        #friends-list li button {
+            background-color: #d73a49;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background-color 0.2s;
+        }
+        #friends-list li button:hover {
+            background-color: #cb2431;
+        }
+        .add-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #d1d5da;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        input[type="text"]:focus {
+            border-color: #0366d6;
+            outline: none;
+        }
+        button {
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        #add-button {
+            background-color: #0366d6;
+        }
+        #add-button:hover {
+            background-color: #005cc5;
+        }
+        .empty-state {
+            color: #586069;
+            text-align: center;
+            padding: 20px;
+            border: 1px dashed #d1d5da;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Friends Follow Extension Configuration</h1>
+    
+    <div class="instructions">
+        <h2>Setup Instructions for Streamers</h2>
+        <p>Welcome! This extension lets you create a curated list of Twitch friends (other streamers) that your viewers can easily follow with one click from a slide-out panel on your video player.</p>
+        <ol>
+            <li><strong>Add Friends</strong>: Enter a Twitch username (e.g., "xai" without the @) in the input field below and click "Add Friend". You can add as many as you like.</li>
+            <li><strong>Manage List</strong>: Your current list appears below. Click "Remove" next to any username to delete it.</li>
+            <li><strong>Save Changes</strong>: After making edits, click "Save List" to update. Changes will appear in your stream's viewer panel immediately.</li>
+            <li><strong>Viewer Experience</strong>: On your stream, viewers will see a "Friends" tab on the right side of the player. Clicking it slides out a panel with your list, each with a "Follow" button that triggers Twitch's native follow prompt.</li>
+            <li><strong>Tips</strong>: Use valid Twitch usernames only. The panel is non-intrusive and hides during ads. If you have questions, check the Twitch Extensions Dashboard or contact the developer.</li>
+        </ol>
+        <p>This setup is unique to your channel—other streamers using this extension will have their own lists.</p>
+    </div>
+    
+    <div class="form-container">
+        <h2>Manage Your Friends List</h2>
+        
+        <div id="empty-state" class="empty-state" style="display: none;">No friends added yet. Start by entering a username below!</div>
+        
+        <ul id="friends-list"></ul>
+        
+        <div class="add-form">
+            <input type="text" id="new-friend" placeholder="Enter Twitch username (e.g., xai)">
+            <button id="add-button">Add Friend</button>
+        </div>
+        
+        <button id="save-button">Save List</button>
+    </div>
+    
+    <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
+    <script>
+        let friends = [];
+        
+        // Load existing config
+        window.Twitch.ext.onAuthorized(function(auth) {
+            window.Twitch.ext.configuration.onChanged(loadConfig);
+            loadConfig(); // Initial load
+        });
+        
+        function loadConfig() {
+            if (window.Twitch.ext.configuration.broadcaster) {
+                try {
+                    friends = JSON.parse(window.Twitch.ext.configuration.broadcaster.content) || [];
+                    renderList();
+                } catch (e) {
+                    console.error('Invalid config:', e);
+                    friends = [];
+                    renderList();
+                }
+            }
+        }
+        
+        // Render the list
+        function renderList() {
+            const list = document.getElementById('friends-list');
+            const emptyState = document.getElementById('empty-state');
+            list.innerHTML = '';
+            if (friends.length === 0) {
+                emptyState.style.display = 'block';
+            } else {
+                emptyState.style.display = 'none';
+                friends.forEach((friend, index) => {
+                    const li = document.createElement('li');
+                    li.textContent = friend;
+                    const removeBtn = document.createElement('button');
+                    removeBtn.textContent = 'Remove';
+                    removeBtn.onclick = () => {
+                        friends.splice(index, 1);
+                        renderList();
+                    };
+                    li.appendChild(removeBtn);
+                    list.appendChild(li);
+                });
+            }
+        }
+        
+        // Add button
+        document.getElementById('add-button').onclick = function() {
+            const input = document.getElementById('new-friend');
+            const username = input.value.trim().toLowerCase(); // Normalize to lowercase for consistency
+            if (username && !friends.includes(username)) {
+                friends.push(username);
+                renderList();
+                input.value = '';
+            } else if (friends.includes(username)) {
+                alert('This username is already in the list.');
+            }
+        };
+        
+        // Save button
+        document.getElementById('save-button').onclick = function() {
+            window.Twitch.ext.configuration.set('broadcaster', '1', JSON.stringify(friends));
+            alert('Friends list saved successfully! Changes will appear in your stream.');
+        };
+        
+        // Initial render
+        renderList();
+    </script>
+</body>
+</html>
