@@ -29,7 +29,10 @@
     let friends = [];
     let helixToken = null;
 
+    console.log('Config script loaded');
+
     function render() {
+      console.log('Rendering friends list');
       listEl.innerHTML = '';
       friends.forEach((f, i) => {
         const div = document.createElement('div');
@@ -49,8 +52,12 @@
 
     addBtn.onclick = async () => {
       const login = document.getElementById('username').value.trim().toLowerCase();
-      if (!login || !helixToken) return;
+      if (!login || !helixToken) {
+        console.log('No login or token available');
+        return;
+      }
       try {
+        console.log('Fetching user:', login);
         const res = await fetch(`https://api.twitch.tv/helix/users?login=${login}`, {
           headers: { 'Client-ID': clientId, 'Authorization': `Bearer ${helixToken}` }
         });
@@ -72,13 +79,13 @@
     };
 
     saveBtn.onclick = () => {
+      console.log('Saving config:', friends);
       Twitch.ext.configuration.set('broadcaster', '1.0', JSON.stringify({ friends }));
-      console.log('Config saved');
       alert('Saved!');
     };
 
     Twitch.ext.configuration.onChanged(() => {
-      console.log('Config changed detected');
+      console.log('Config changed detected. Broadcaster config:', Twitch.ext.configuration.broadcaster);
       if (Twitch.ext.configuration.broadcaster) {
         try {
           const cfg = JSON.parse(Twitch.ext.configuration.broadcaster.content);
@@ -90,7 +97,7 @@
 
     Twitch.ext.onAuthorized((auth) => {
       helixToken = auth.helixToken;
-      console.log('Authorized with token');
+      console.log('Authorized with helixToken:', !!helixToken);
       // Initial load
       if (Twitch.ext.configuration.broadcaster) {
         try {
