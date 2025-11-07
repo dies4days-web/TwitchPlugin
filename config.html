@@ -3,224 +3,180 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Friends Follow Extension - Configuration</title>
+    <title>Friends Follow Panel</title>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background-color: #f6f8fa;
-            color: #333;
-            margin: 0;
+        body { margin: 0; padding: 0; font-family: -apple witstemFont, sans-serif; background: transparent; }
+        #panel {
+            position: absolute;
+            top: 50%;
+            right: 0;
+            width: 320px;
+            height: 100vh;
+            transform: translateX(100%) translateY(-50%);
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(17, 17, 17, 0.98);
+            backdrop-filter: blur(12px);
+            border-left: 1px solid #333;
+            box-shadow: -8px 0 30px rgba(0,0,0,0.4);
+            z-index: 10000;
+        }
+        #panel.open { transform: translateX(0) translateY(-50%); }
+        
+        #tab {
+            position: absolute;
+            left: -50px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 50px;
+            height: 50px;
+            background: #9147ff;
+            border-radius: 12px 0 0 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: -4px 0 15px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+        }
+        #tab:hover { background: #a970ff; transform: translateY(-50%) scale(1.05); }
+        #tab svg { width: 24px; height: 24px; fill: white; transition: transform 0.3s; }
+        #panel.open #tab svg { transform: rotate(180deg); }
+        
+        #content {
             padding: 20px;
-            line-height: 1.5;
-            max-width: 800px;
-            margin: 0 auto;
+            height: 100%;
+            overflow-y: auto;
+            color: white;
         }
-        h1, h2 {
-            color: #24292e;
-        }
-        h1 {
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-        h2 {
-            font-size: 18px;
-            margin-top: 30px;
-            margin-bottom: 10px;
-        }
-        p {
-            margin-bottom: 15px;
-            color: #586069;
-        }
-        .instructions {
-            background-color: #fff;
-            border: 1px solid #e1e4e8;
-            border-radius: 6px;
-            padding: 20px;
-            margin-bottom: 30px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-        .form-container {
-            background-color: #fff;
-            border: 1px solid #e1e4e8;
-            border-radius: 6px;
-            padding: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-        #friends-list {
-            list-style: none;
-            padding: 0;
-            margin: 0 0 20px 0;
-        }
+        h3 { margin: 0 0 20px 0; font-size: 20px; }
+        #friends-list { list-style: none; padding: 0; margin: 0; }
         #friends-list li {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            background-color: #f6f8fa;
-            border: 1px solid #e1e4e8;
-            border-radius: 6px;
-            padding: 10px 15px;
+            padding: 12px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
             margin-bottom: 10px;
-            font-size: 14px;
+            transition: all 0.2s;
         }
-        #friends-list li button {
-            background-color: #d73a49;
-            color: #fff;
-            border: none;
-            border-radius: 4px;
-            padding: 5px 10px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: background-color 0.2s;
+        #friends-list li:hover { background: rgba(145,71,255,0.2); }
+        #friends-list img {
+            width: 44px; height: 44px; border-radius: 50%; margin-right: 14px; object-fit: cover;
         }
-        #friends-list li button:hover {
-            background-color: #cb2431;
-        }
-        .add-form {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        input[type="text"] {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #d1d5da;
-            border-radius: 6px;
-            font-size: 14px;
-            transition: border-color 0.2s;
-        }
-        input[type="text"]:focus {
-            border-color: #0366d6;
-            outline: none;
-        }
+        .name { flex: 1; font-weight: 600; font-size: 15px; }
         button {
-            background-color: #28a745;
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            padding: 10px 20px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: background-color 0.2s;
+            background: #28a745; color: white; border: none; border-radius: 8px;
+            padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
         }
-        button:hover {
-            background-color: #218838;
-        }
-        #add-button {
-            background-color: #0366d6;
-        }
-        #add-button:hover {
-            background-color: #005cc5;
-        }
-        .empty-state {
-            color: #586069;
-            text-align: center;
-            padding: 20px;
-            border: 1px dashed #d1d5da;
-            border-radius: 6px;
-            margin-bottom: 20px;
-        }
+        button:hover { background: #218838; }
+        .empty, .loading, .error { text-align: center; color: #888; padding: 40px 20px; font-size: 15px; }
     </style>
 </head>
 <body>
-    <h1>Friends Follow Extension Configuration</h1>
-    
-    <div class="instructions">
-        <h2>Setup Instructions for Streamers</h2>
-        <p>Welcome! This extension lets you create a curated list of Twitch friends (other streamers) that your viewers can easily follow with one click from a slide-out panel on your video player.</p>
-        <ol>
-            <li><strong>Add Friends</strong>: Enter a Twitch username (e.g., "xai" without the @) in the input field below and click "Add Friend". You can add as many as you like.</li>
-            <li><strong>Manage List</strong>: Your current list appears below. Click "Remove" next to any username to delete it.</li>
-            <li><strong>Save Changes</strong>: After making edits, click "Save List" to update. Changes will appear in your stream's viewer panel immediately.</li>
-            <li><strong>Viewer Experience</strong>: On your stream, viewers will see a "Friends" tab on the right side of the player. Clicking it slides out a panel with your list, each with a "Follow" button that triggers Twitch's native follow prompt.</li>
-            <li><strong>Tips</strong>: Use valid Twitch usernames only. The panel is non-intrusive and hides during ads. If you have questions, check the Twitch Extensions Dashboard or contact the developer.</li>
-        </ol>
-        <p>This setup is unique to your channel—other streamers using this extension will have their own lists.</p>
-    </div>
-    
-    <div class="form-container">
-        <h2>Manage Your Friends List</h2>
-        
-        <div id="empty-state" class="empty-state" style="display: none;">No friends added yet. Start by entering a username below!</div>
-        
-        <ul id="friends-list"></ul>
-        
-        <div class="add-form">
-            <input type="text" id="new-friend" placeholder="Enter Twitch username (e.g., xai)">
-            <button id="add-button">Add Friend</button>
+    <div id="panel">
+        <div id="tab" onclick="toggle()">
+            <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
         </div>
-        
-        <button id="save-button">Save List</button>
+        <div id="content">
+            <h3>Streamer's Friends</h3>
+            <div id="loading" class="loading">Loading friends...</div>
+            <div id="error" class="error" style="display:none;"></div>
+            <ul id="friends-list"></ul>
+            <div id="empty" class="empty">No friends added yet.</div>
+        </div>
     </div>
-    
+
     <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
     <script>
-        let friends = [];
-        
-        // Load existing config
-        window.Twitch.ext.onAuthorized(function(auth) {
+        let friends = [], helixToken = '', clientId = '';
+        const panel = document.getElementById('panel');
+        const list = document.getElementById('friends-list');
+        const empty = document.getElementById('empty');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+
+        function toggle() {
+            panel.classList.toggle('open');
+        }
+
+        window.Twitch.ext.onAuthorized(auth => {
+            helixToken = auth.helixToken;
+            clientId = auth.clientId;
             window.Twitch.ext.configuration.onChanged(loadConfig);
-            loadConfig(); // Initial load
+            loadConfig();
         });
-        
+
         function loadConfig() {
-            if (window.Twitch.ext.configuration.broadcaster) {
+            if (!window.Twitch.ext.configuration.broadcaster?.content) {
+                showEmpty("No friends configured yet.");
+                return;
+            }
+            try {
+                friends = JSON.parse(window.Twitch.ext.configuration.broadcaster.content) || [];
+                if (friends.length === 0) {
+                    showEmpty("No friends added yet.");
+                } else {
+                    loading.style.display = 'block';
+                    error.style.display = 'none';
+                    empty.style.display = 'none';
+                    fetchUsersOneByOne();
+                }
+            } catch (e) {
+                showError("Invalid config data.");
+            }
+        }
+
+        async function fetchUsersOneByOne() {
+            list.innerHTML = '';
+            let validUsers = [];
+            for (const username of friends) {
                 try {
-                    friends = JSON.parse(window.Twitch.ext.configuration.broadcaster.content) || [];
-                    renderList();
+                    const res = await fetch(`https://api.twitch.tv/helix/users?login=${username}`, {
+                        headers: { 'Authorization': `Bearer ${helixToken}`, 'Client-Id': clientId }
+                    });
+                    const data = await res.json();
+                    if (data.data && data.data[0]) {
+                        validUsers.push(data.data[0]);
+                    }
                 } catch (e) {
-                    console.error('Invalid config:', e);
-                    friends = [];
-                    renderList();
+                    console.error(`Failed to fetch ${username}`);
                 }
             }
-        }
-        
-        // Render the list
-        function renderList() {
-            const list = document.getElementById('friends-list');
-            const emptyState = document.getElementById('empty-state');
-            list.innerHTML = '';
-            if (friends.length === 0) {
-                emptyState.style.display = 'block';
+            if (validUsers.length === 0) {
+                showEmpty("No valid friends found. Check usernames in config.");
             } else {
-                emptyState.style.display = 'none';
-                friends.forEach((friend, index) => {
-                    const li = document.createElement('li');
-                    li.textContent = friend;
-                    const removeBtn = document.createElement('button');
-                    removeBtn.textContent = 'Remove';
-                    removeBtn.onclick = () => {
-                        friends.splice(index, 1);
-                        renderList();
-                    };
-                    li.appendChild(removeBtn);
-                    list.appendChild(li);
-                });
+                render(validUsers);
             }
+            loading.style.display = 'none';
         }
-        
-        // Add button
-        document.getElementById('add-button').onclick = function() {
-            const input = document.getElementById('new-friend');
-            const username = input.value.trim().toLowerCase(); // Normalize to lowercase for consistency
-            if (username && !friends.includes(username)) {
-                friends.push(username);
-                renderList();
-                input.value = '';
-            } else if (friends.includes(username)) {
-                alert('This username is already in the list.');
-            }
-        };
-        
-        // Save button
-        document.getElementById('save-button').onclick = function() {
-            window.Twitch.ext.configuration.set('broadcaster', '1', JSON.stringify(friends));
-            alert('Friends list saved successfully! Changes will appear in your stream.');
-        };
-        
-        // Initial render
-        renderList();
+
+        function render(users) {
+            users.forEach(u => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <img src="${u.profile_image_url}" alt="${u.login}">
+                    <span class="name">@${u.display_name}</span>
+                    <button onclick="window.Twitch.ext.actions.followChannel('${u.login}')">Follow</button>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        function showEmpty(msg) {
+            loading.style.display = 'none';
+            empty.textContent = msg;
+            empty.style.display = 'block';
+        }
+
+        function showError(msg) {
+            loading.style.display = 'none';
+            error.textContent = msg;
+            error.style.display = 'block';
+        }
+
+        window.Twitch.ext.onVisibilityChanged((visible) => {
+            if (!visible) panel.classList.remove('open');
+        });
     </script>
 </body>
 </html>
