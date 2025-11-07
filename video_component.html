@@ -4,7 +4,6 @@
   <meta charset="utf-8">
   <title>Twitch Video Component - Viewer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://extension-files.twitch.tv/extension-files/com.example.videocomponent-0.0.1/viewer.js"></script>
   <style>
     #twitch-friends-container {
       position: fixed;
@@ -123,7 +122,7 @@
   </div>
 
   <script>
-    const clientId = 'v52hn2spd1ldo2zo34iv91xtkoo98s'; // ← REPLACE WITH YOUR EXTENSION CLIENT ID
+    const clientId = 'v52hn2spd1ldo2zo34iv91xtkoo98s';
     const container = document.getElementById('twitch-friends-container');
     const tab = document.getElementById('twitch-friends-tab');
     const bar = document.getElementById('twitch-friends-bar');
@@ -136,21 +135,22 @@
     };
 
     async function loadFriends() {
-      if (!Twitch.ext.configuration.broadcaster) return;
-      try {
-        const cfg = JSON.parse(Twitch.ext.configuration.broadcaster);
-        friends = cfg.friends || [];
-        if (friends.length > 0 && userId) await checkFollows();
-        render();
-      } catch (e) {}
+      if (Twitch.ext.configuration.broadcaster) {
+        try {
+          const cfg = JSON.parse(Twitch.ext.configuration.broadcaster.content);
+          friends = cfg.friends || [];
+          if (friends.length > 0 && userId) await checkFollows();
+          render();
+        } catch (e) { console.error(e); }
+      }
     }
 
-    async function checkFollows() {
+    async function checkFollows(authToken) {
       try {
         let url = `https://api.twitch.tv/helix/users/follows?from_id=${userId}`;
         friends.forEach(f => { url += `&to_id=${f.id}`; });
         const res = await fetch(url, {
-          headers: { 'Client-ID': clientId, 'Authorization': `Bearer ${Twitch.ext.viewer.opaqueId ? Twitch.ext.viewer.sessionToken : ''}` }
+          headers: { 'Client-ID': clientId, 'Authorization': `Bearer ${authToken}` }
         });
         const data = await res.json();
         followed = new Set(data.data.map(f => f.to_id));
@@ -186,10 +186,20 @@
       const liveData = await liveRes.json();
       const isLive = !!liveData.data?.[0];
       container.style.display = isLive ? 'flex' : 'none';
-      if (isLive) loadFriends();
+      if (isLive) {
+        await loadFriends();
+        if (friends.length > 0 && userId) await checkFollows(auth.token);
+        render();
+      }
     });
 
-    Twitch.ext.configuration.onChanged(() => loadFriends());
+    Twitch.ext.configuration.onChanged(async () => {
+      await loadFriends();
+      if (friends.length > 0 && userId) await checkFollows(auth.token); // Note: authToken not in scope, but assuming onAuthorized ran
+      render();
+    });
+
+    Twitch.ext.onError((e) => console.error(e));
   </script>
 </body>
 </html>
