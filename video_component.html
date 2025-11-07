@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <title>Twitch Video Component - Viewer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://extension-files.twitch.tv; img-src * data:; connect-src https://api.twitch.tv;">
   <style>
     #twitch-friends-container {
       position: fixed;
@@ -121,6 +122,7 @@
     <div id="twitch-friends-tab">FRIENDS</div>
   </div>
 
+  <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.js"></script>
   <script>
     const clientId = 'v52hn2spd1ldo2zo34iv91xtkoo98s';
     const container = document.getElementById('twitch-friends-container');
@@ -130,7 +132,7 @@
     let followed = new Set();
     let userId = null;
     let helixToken = null;
-    let isTwitchContext = typeof Twitch !== 'undefined' && Twitch.ext;
+    const isTwitchContext = typeof Twitch !== 'undefined' && Twitch.ext;
 
     tab.onclick = () => {
       container.classList.toggle('open');
@@ -182,7 +184,7 @@
         const div = document.createElement('div');
         div.className = 'friend';
         div.innerHTML = `
-          <img src="${f.profile_image_url || 'https://static-cdn.jtvnw.net/ttv-static/404_preview-40x40.png'}" alt="${f.display_name}">
+          <img src="${f.profile_image_url || 'https://static-cdn.jtvnw.net/ttv-static/404_preview-40x40.png'}" alt="${f.display_name}" onerror="this.src='https://static-cdn.jtvnw.net/ttv-static/404_preview-40x40.png';">
           <div class="name">${f.display_name}</div>
           <button class="${isFollowing ? 'following' : 'follow'}" onclick="window.open('https://twitch.tv/${f.login}', '_blank')">
             ${isFollowing ? '♥ Following' : '♡ Follow'}
@@ -215,9 +217,8 @@
 
       Twitch.ext.onError((e) => console.error(e));
     } else {
-      loadFriends(); // Fallback for direct load
-      container.style.display = 'flex'; // Show for testing
-      render();
+      container.style.display = 'flex';
+      loadFriends();
     }
   </script>
 </body>
